@@ -1,0 +1,21 @@
+map insert ctf 3 15 34 76     
+map insert architecture 1 32    
+map traverse    
+map append architecture 45    
+map visitVec wine 1     
+map insert jupyter 5 132 67 8 23 25    
+map visitVec architecture 1    
+map visit jupyter    
+map erase ctf
+map traverse    
+map size
+set insert 35 1 html   
+set insert 43 3 css
+set insert 67 2 javascript   
+set count 35 1 html
+set count 43 1 html   
+set traverse    
+set erase 67 2 javascript
+set size
+set traverse    
+end    

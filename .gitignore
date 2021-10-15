@@ -1,0 +1,6 @@
+bin
+.vscode
+**/*.log
+**/*.o
+**/a.out
+**/vgcore*
