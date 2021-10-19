@@ -11,3 +11,6 @@ SRC="src/$1.cpp"
 EXE="./bin/$1"
 INFILE="./src/$1.in"
 GEN="./src/$1.gen"
+
+BROWSER="firefox-developer-edition"
+IDE="codium"

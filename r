@@ -8,6 +8,22 @@ if [ ! -e "$SRC" ]; then
   exit 1
 fi
 
-g++ --debug "$SRC" -o "$EXE" || exit $?
+g++ --debug "$SRC" -o "$EXE" $CXXFLAGS || exit $?
 if [ "$2" = "-v" ]; then EXE="valgrind $EXE"; fi
-if [ -e "$INFILE" ]; then time $EXE < "$INFILE"; else time "$EXE"; fi
+
+if [ "$2" = "-p" ]; then
+  if [ ! -e "$SRC" ]; then
+    echo "$INFILE needed to run profiling."
+    exit 1
+  fi
+  "$EXE" < "$INFILE" > /dev/null &
+  PID=$!
+  perf record -F 99 -p $PID -g -- sleep 5 2>/dev/null || echo "The program exited before perf is ready to record; try with a bigger input." && exit 1
+  kill $PID
+  flamegraph.pl <(stackcollapse-perf.pl <(perf script)) > perf.svg || echo "Flame graph generation failed." && exit 1
+  rm -f perf.data
+  $BROWSER perf.svg
+  exit 0
+fi
+
+if [ -e "$INFILE" ]; then time $EXE < "$INFILE"; else time $EXE; fi
