@@ -4,7 +4,7 @@ DESC="Open the desinated C++ and in files if exist"
 . lib/common.sh
 
 if [ ! -e "$SRC" ]; then
-  echo "Source file does not exist; refusing to run."
+  echo "Source file does not exist; refusing to open."
   exit 1
 fi
 
