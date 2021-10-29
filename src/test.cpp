@@ -13,6 +13,14 @@ struct A {
 };
 
 int main () {
+  std::string s;
+  cin >> s;
+  cout << (char) cin.get() << (char) cin.get();
+  cin >> s;
+  cout << s;
+}
+
+int main1 () {
   std::ios_base::sync_with_stdio(false);
   cin.tie(NULL);
   std::set<A> s;

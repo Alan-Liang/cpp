@@ -8,7 +8,7 @@ if [ ! -e "$SRC" ]; then
   exit 1
 fi
 
-g++ --debug "$SRC" -o "$EXE" $CXXFLAGS || exit $?
+g++ --debug "$SRC" -o "$EXE" -DDEBUG $CXXFLAGS || exit $?
 if [ "$2" = "-v" ]; then EXE="valgrind $EXE"; fi
 
 if [ "$2" = "-p" ]; then
