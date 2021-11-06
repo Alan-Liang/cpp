@@ -1,0 +1,3 @@
+[submodule "int2048"]
+	path = int2048
+	url = git@github.com:Alan-Liang/int2048

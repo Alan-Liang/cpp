@@ -550,7 +550,7 @@ class Scroll : BaseCommand {
 #endif
       auto nextPerfTeamIt = competition.ixTeamByPerformance.upper_bound(currentTeamId);
       // 3.2
-      auto submissionIt = competition.pendingSubmissions.lower_bound(-currentTeamId-1);
+      auto submissionIt = competition.pendingSubmissions.lower_bound(-currentTeamId - 1);
       while (true) { // 3.3
         Submission &currentSubmission = competition.submissions[*submissionIt];
         currentTeam.problems[currentSubmission.problem].frozen = 0; // 3.3.0
