@@ -9,7 +9,7 @@ if [ ! -e "$SRC" ]; then
 fi
 
 g++ --debug "$SRC" -o "$EXE" -DDEBUG $CXXFLAGS || exit $?
-if [ "$2" = "-v" ]; then EXE="valgrind $EXE"; fi
+if [ "$2" = "-v" ]; then EXE="valgrind --leak-check=full --show-leak-kinds=all $EXE"; fi
 
 if [ "$2" = "-p" ]; then
   if [ ! -e "$SRC" ]; then
