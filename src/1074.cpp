@@ -1,14 +1,12 @@
 #include <cassert>
-#include <iostream>
-#include <fstream>
 #include <exception>
-#include <regex>
-#include <vector>
-#include <unordered_map>
+#include <fstream>
+#include <iostream>
 #include <map>
+#include <regex>
 #include <string>
-
-using std::cin, std::cout, std::endl;
+#include <unordered_map>
+#include <vector>
 
 constexpr const char *kDivideByZero = "DIVIDE BY ZERO";
 constexpr const char *kInvalidNumber = "INVALID NUMBER";
@@ -18,6 +16,9 @@ constexpr const char *kVariableNotDefined = "VARIABLE NOT DEFINED";
 constexpr const char *kHelp = "Yet another basic interpreter";
 
 constexpr const char *keyWords[] = {"REM","LET","PRINT","INPUT","END","GOTO","IF","THEN","RUN","LIST","CLEAR","QUIT","HELP"};
+
+template <typename T>
+void print (T var) { std::cout << var << std::endl; }
 
 class Error : public std::exception {
  public:
@@ -34,7 +35,7 @@ struct ProgramState {
 };
 
 ProgramState state;
-std::istream *stream = &cin;
+std::istream *stream = &std::cin;
 
 const std::regex kReName {R"(^[a-zA-Z0-9]+$)"};
 void checkName (const std::string &name) {
@@ -47,33 +48,47 @@ void checkLine (int line) {
   if (state.program.count(line) < 1) throw Error(kLineNumberError);
 }
 
-enum ExpressionType { OP, GROUP, VARIABLE, LITERAL };
 struct Expression {
-  virtual ExpressionType getType () = 0;
   virtual void _dummy () {}
+  virtual int eval () = 0;
 };
 enum Op { ADD, SUB, MUL, DIV };
 struct OpExpression : public Expression {
-  ExpressionType getType () { return OP; }
   Op op;
   Expression *lhs;
   Expression *rhs;
   OpExpression (Op op, Expression *lhs, Expression *rhs) : op(op), lhs(lhs), rhs(rhs) {}
+  int eval () {
+    int lhsValue = lhs->eval(), rhsValue = rhs->eval();
+    switch (op) {
+      case ADD: return lhsValue + rhsValue;
+      case SUB: return lhsValue - rhsValue;
+      case MUL: return lhsValue * rhsValue;
+      case DIV: {
+        if (rhsValue == 0) throw Error(kDivideByZero);
+        return lhsValue / rhsValue;
+      }
+      default: assert(false);
+    }
+  }
 };
 struct GroupExpression : public Expression {
-  ExpressionType getType () { return GROUP; }
   Expression *group;
   GroupExpression (Expression *group) : group(group) {}
+  int eval () { return group->eval(); }
 };
 struct VariableExpression : public Expression {
-  ExpressionType getType () { return VARIABLE; }
   std::string variable;
   VariableExpression (const std::string &variable) : variable(variable) {}
+  int eval () {
+    if (state.variables.count(variable) < 1) throw Error(kVariableNotDefined);
+    return state.variables[variable];
+  }
 };
 struct LiteralExpression : public Expression {
-  ExpressionType getType () { return LITERAL; }
   int literal;
   LiteralExpression (int literal) : literal(literal) {}
+  int eval () { return literal; }
 };
 struct Group {
   int start;
@@ -81,17 +96,17 @@ struct Group {
   Expression *parsed;
 };
 
-std::unordered_map<std::string, int> kExprGroups {
-  std::make_pair("literal", 1),
-  std::make_pair("variable", 2),
-  std::make_pair("group", 3),
-  std::make_pair("lhspm", 4),
-  std::make_pair("pm", 5),
-  std::make_pair("rhspm", 6),
-  std::make_pair("lhsmul", 7),
-  std::make_pair("mul", 8),
-  std::make_pair("rhsmul", 9),
-};
+struct {
+  const int literal = 1;
+  const int variable = 2;
+  const int group = 3;
+  const int lhspm = 4;
+  const int pm = 5;
+  const int rhspm = 6;
+  const int lhsmul = 7;
+  const int mul = 8;
+  const int rhsmul = 9;
+} kExprGroups;
 const std::regex kReExpr {R"(^(?:(\d+)|([a-zA-Z0-9]+)|(?:__GRP_(\d+)__)|(?:(.+)\s*([+\-])\s*(.+))|(?:(.+)\s*([*/])\s*(.+)))$)"};
 const std::regex kReParens {R"([()])"};
 Expression *parseExpr (std::string expr, const std::vector<Group> baseGroups = {}) {
@@ -123,79 +138,51 @@ Expression *parseExpr (std::string expr, const std::vector<Group> baseGroups = {
   for (int i = baseGroups.size() - 1; i >= 0; --i) groups.insert(groups.begin(), baseGroups[i]);
   std::smatch match;
   if (!std::regex_match(expr, match, kReExpr)) throw Error(kSyntaxError);
-  if (match[kExprGroups["literal"]].matched) return new LiteralExpression(std::stoi(match[kExprGroups["literal"]].str()));
-  if (match[kExprGroups["variable"]].matched) return new VariableExpression(match[kExprGroups["variable"]].str());
-  if (match[kExprGroups["group"]].matched) return new GroupExpression(groups[std::stoi(match[kExprGroups["group"]].str())].parsed);
-  if (match[kExprGroups["pm"]].matched) {
+  if (match[kExprGroups.literal].matched) return new LiteralExpression(std::stoi(match[kExprGroups.literal].str()));
+  if (match[kExprGroups.variable].matched) return new VariableExpression(match[kExprGroups.variable].str());
+  if (match[kExprGroups.group].matched) return new GroupExpression(groups[std::stoi(match[kExprGroups.group].str())].parsed);
+  if (match[kExprGroups.pm].matched) {
     return new OpExpression(
-      match[kExprGroups["pm"]].str() == "+" ? ADD : SUB,
-      parseExpr(match[kExprGroups["lhspm"]].str(), groups),
-      parseExpr(match[kExprGroups["rhspm"]].str(), groups)
+      match[kExprGroups.pm].str() == "+" ? ADD : SUB,
+      parseExpr(match[kExprGroups.lhspm].str(), groups),
+      parseExpr(match[kExprGroups.rhspm].str(), groups)
     );
   }
-  if (match[kExprGroups["mul"]].matched) {
+  if (match[kExprGroups.mul].matched) {
     return new OpExpression(
-      match[kExprGroups["mul"]].str() == "*" ? MUL : DIV,
-      parseExpr(match[kExprGroups["lhsmul"]].str(), groups),
-      parseExpr(match[kExprGroups["rhsmul"]].str(), groups)
+      match[kExprGroups.mul].str() == "*" ? MUL : DIV,
+      parseExpr(match[kExprGroups.lhsmul].str(), groups),
+      parseExpr(match[kExprGroups.rhsmul].str(), groups)
     );
-  }
-  assert(false);
-}
-
-int evalExpr (Expression *expr) {
-  switch (expr->getType()) {
-    case LITERAL: return dynamic_cast<LiteralExpression *>(expr)->literal;
-    case VARIABLE: {
-      std::string varName = dynamic_cast<VariableExpression *>(expr)->variable;
-      if (state.variables.count(varName) < 1) throw Error(kVariableNotDefined);
-      return state.variables[varName];
-    }
-    case GROUP: return evalExpr(dynamic_cast<GroupExpression *>(expr)->group);
-    case OP: {
-      OpExpression *opExpr = dynamic_cast<OpExpression *>(expr);
-      int lhs = evalExpr(opExpr->lhs), rhs = evalExpr(opExpr->rhs);
-      switch (opExpr->op) {
-        case ADD: return lhs + rhs;
-        case SUB: return lhs - rhs;
-        case MUL: return lhs * rhs;
-        case DIV: {
-          if (rhs == 0) throw Error(kDivideByZero);
-          return lhs / rhs;
-        }
-        default: assert(false);
-      }
-    }
-    default: assert(false);
   }
   assert(false);
 }
 
 const std::regex kReStatement {R"(^(?:(?:(\d+)\s*)?(?:(REM\s*.+)|(LET\s*([^ ]+)\s+=\s+(.+))|(PRINT\s*(.+))|(INPUT\s*([^ ]+))|(END\s*(?:))|(GOTO\s*(\d+))|(IF\s*(.+)\s+([<>=])\s+(.+)\s+THEN\s+(\d+))|(RUN\s*)|(LIST\s*)|(CLEAR\s*)|(QUIT\s*)|(HELP\s*))?)$)"};
-std::unordered_map<std::string, int> kStatementGroups {
-  std::make_pair("lineNumber", 1),
-  std::make_pair("rem", 2),
-  std::make_pair("let", 3),
-  std::make_pair("letName", 4),
-  std::make_pair("letExpr", 5),
-  std::make_pair("print", 6),
-  std::make_pair("printExpr", 7),
-  std::make_pair("input", 8),
-  std::make_pair("inputName", 9),
-  std::make_pair("end", 10),
-  std::make_pair("goto", 11),
-  std::make_pair("gotoLine", 12),
-  std::make_pair("if", 13),
-  std::make_pair("ifLhs", 14),
-  std::make_pair("ifCmp", 15),
-  std::make_pair("ifRhs", 16),
-  std::make_pair("ifLine", 17),
-  std::make_pair("run", 18),
-  std::make_pair("list", 19),
-  std::make_pair("clear", 20),
-  std::make_pair("quit", 21),
-  std::make_pair("help", 22),
-};
+struct {
+  const int lineNumber = 1;
+  const int rem = 2;
+  const int let = 3;
+  const int letName = 4;
+  const int letExpr = 5;
+  const int print = 6;
+  const int printExpr = 7;
+  const int input = 8;
+  const int inputName = 9;
+  const int end = 10;
+  const int goto_ = 11;
+  const int gotoLine = 12;
+  const int if_ = 13;
+  const int ifLhs = 14;
+  const int ifCmp = 15;
+  const int ifRhs = 16;
+  const int ifLine = 17;
+  const int run = 18;
+  const int list = 19;
+  const int clear = 20;
+  const int quit = 21;
+  const int help = 22;
+} kStatementGroups;
 
 // WARNING: Memory leak ahead!
 
@@ -224,12 +211,12 @@ class LetStatement : public Statement {
   Expression *expr;
   std::string name;
   LetStatement (std::smatch match) {
-    name = match[kStatementGroups["letName"]].str();
+    name = match[kStatementGroups.letName].str();
     checkName(name);
-    expr = parseExpr(match[kStatementGroups["letExpr"]].str());
+    expr = parseExpr(match[kStatementGroups.letExpr].str());
   }
   void run () {
-    state.variables[name] = evalExpr(expr);
+    state.variables[name] = expr->eval();
   }
 };
 
@@ -238,11 +225,9 @@ class PrintStatement : public Statement {
   RunnableType getType () { return PRINT; }
   Expression *expr;
   PrintStatement (std::smatch match) {
-    expr = parseExpr(match[kStatementGroups["printExpr"]].str());
+    expr = parseExpr(match[kStatementGroups.printExpr].str());
   }
-  void run () {
-    cout << evalExpr(expr) << endl;
-  }
+  void run () { print(expr->eval()); }
 };
 
 const std::regex kInputRegex {R"(^-?\d+$)"};
@@ -251,11 +236,11 @@ class InputStatement : public Statement {
   RunnableType getType () { return INPUT; }
   std::string name;
   InputStatement (std::smatch match) {
-    name = match[kStatementGroups["inputName"]].str();
+    name = match[kStatementGroups.inputName].str();
     checkName(name);
   }
   std::string read () {
-    cout << " ? ";
+    std::cout << " ? ";
     std::string input;
     std::getline(*stream, input);
     return input;
@@ -263,7 +248,7 @@ class InputStatement : public Statement {
   void run () {
     std::string input = read();
     while (!std::regex_match(input, kInputRegex)) {
-      cout << kInvalidNumber << endl;
+      print(kInvalidNumber);
       input = read();
     }
     state.variables[name] = std::stoi(input);
@@ -281,7 +266,7 @@ class GotoStatement : public Statement { // considered harmful
   RunnableType getType () { return GOTO; }
   int line;
   GotoStatement (std::smatch match) {
-    line = std::stoi(match[kStatementGroups["gotoLine"]].str());
+    line = std::stoi(match[kStatementGroups.gotoLine].str());
   }
   void run () {
     checkLine(line);
@@ -296,10 +281,10 @@ class IfStatement : public Statement {
   char cmp;
   int line;
   IfStatement (std::smatch match) {
-    lhs = parseExpr(match[kStatementGroups["ifLhs"]].str());
-    rhs = parseExpr(match[kStatementGroups["ifRhs"]].str());
-    cmp = match[kStatementGroups["ifCmp"]].str()[0];
-    line = std::stoi(match[kStatementGroups["ifLine"]].str());
+    lhs = parseExpr(match[kStatementGroups.ifLhs].str());
+    rhs = parseExpr(match[kStatementGroups.ifRhs].str());
+    cmp = match[kStatementGroups.ifCmp].str()[0];
+    line = std::stoi(match[kStatementGroups.ifLine].str());
   }
   bool conditionMet (int lhs, int rhs) {
     switch (cmp) {
@@ -310,7 +295,7 @@ class IfStatement : public Statement {
     }
   }
   void run () {
-    if (conditionMet(evalExpr(lhs), evalExpr(rhs))) {
+    if (conditionMet(lhs->eval(),rhs->eval())) {
       checkLine(line);
       state.pc = line;
     }
@@ -323,7 +308,7 @@ class ListCommand : public Command {
  public:
   RunnableType getType () { return LIST; }
   void run () {
-    for (const auto &[ line, expr ] : state.program) cout << expr->source << endl;
+    for (const auto &[ line, expr ] : state.program) print(expr->source);
   }
 };
 
@@ -342,7 +327,7 @@ class QuitCommand : public Command {
 class HelpCommand : public Command {
  public:
   RunnableType getType () { return HELP; }
-  void run () { cout << kHelp << endl; }
+  void run () { print(kHelp); }
 };
 
 class RunCommand : public Command {
@@ -361,7 +346,7 @@ class RunCommand : public Command {
         if (state.pc == -1) break;
       }
     } catch (const Error &e) {
-      cout << e.message << endl;
+      print(e.message);
     }
   }
 };
@@ -378,20 +363,20 @@ void oneLine () {
   std::smatch match;
   if (!std::regex_match(line, match, kReStatement)) throw Error(kSyntaxError);
   Runnable *runnable = nullptr;
-  if (match[kStatementGroups["rem"]].matched) runnable = new RemStatement(match);
-  if (match[kStatementGroups["let"]].matched) runnable = new LetStatement(match);
-  if (match[kStatementGroups["print"]].matched) runnable = new PrintStatement(match);
-  if (match[kStatementGroups["input"]].matched) runnable = new InputStatement(match);
-  if (match[kStatementGroups["end"]].matched) runnable = new EndStatement(match);
-  if (match[kStatementGroups["goto"]].matched) runnable = new GotoStatement(match);
-  if (match[kStatementGroups["if"]].matched) runnable = new IfStatement(match);
-  if (match[kStatementGroups["run"]].matched) runnable = new RunCommand();
-  if (match[kStatementGroups["list"]].matched) runnable = new ListCommand();
-  if (match[kStatementGroups["clear"]].matched) runnable = new ClearCommand();
-  if (match[kStatementGroups["quit"]].matched) runnable = new QuitCommand();
-  if (match[kStatementGroups["help"]].matched) runnable = new HelpCommand();
+  if (match[kStatementGroups.rem].matched) runnable = new RemStatement(match);
+  if (match[kStatementGroups.let].matched) runnable = new LetStatement(match);
+  if (match[kStatementGroups.print].matched) runnable = new PrintStatement(match);
+  if (match[kStatementGroups.input].matched) runnable = new InputStatement(match);
+  if (match[kStatementGroups.end].matched) runnable = new EndStatement(match);
+  if (match[kStatementGroups.goto_].matched) runnable = new GotoStatement(match);
+  if (match[kStatementGroups.if_].matched) runnable = new IfStatement(match);
+  if (match[kStatementGroups.run].matched) runnable = new RunCommand();
+  if (match[kStatementGroups.list].matched) runnable = new ListCommand();
+  if (match[kStatementGroups.clear].matched) runnable = new ClearCommand();
+  if (match[kStatementGroups.quit].matched) runnable = new QuitCommand();
+  if (match[kStatementGroups.help].matched) runnable = new HelpCommand();
   int lineNumber = -1;
-  if (match[kStatementGroups["lineNumber"]].matched) lineNumber = std::stoi(match[kStatementGroups["lineNumber"]].str());
+  if (match[kStatementGroups.lineNumber].matched) lineNumber = std::stoi(match[kStatementGroups.lineNumber].str());
   if (runnable == nullptr) {
     if (lineNumber < 0) throw Error(kSyntaxError);
     state.program.erase(lineNumber);
@@ -417,11 +402,11 @@ void oneLine () {
 
 int main (int argc, char **argv) {
   std::ios_base::sync_with_stdio(false);
-  cin.tie(NULL);
+  std::cin.tie(NULL);
   if (argc > 1) {
     std::fstream fs;
     fs.open(argv[1], std::ios_base::in);
     stream = &fs;
   }
-  while (true) try { oneLine(); } catch (const Error &e) { cout << e.message << endl; }
+  while (true) try { oneLine(); } catch (const Error &e) { print(e.message); }
 }
