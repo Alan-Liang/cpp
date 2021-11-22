@@ -49,8 +49,8 @@ void checkLine (int line) {
 }
 
 struct Expression {
-  virtual void _dummy () {}
   virtual int eval () = 0;
+  virtual ~Expression () = default;
 };
 enum Op { ADD, SUB, MUL, DIV };
 struct OpExpression : public Expression {
