@@ -45,6 +45,7 @@ class object {
 #include "base.hpp"
 #endif
 
+#include <algorithm>
 #include <string>
 
 struct date {
@@ -62,13 +63,13 @@ std::istream& operator>> (std::istream &is, date &ts) {
 }
 bool operator< (const date &lhs, const date &rhs) {
   if (lhs.year != rhs.year) return lhs.year < rhs.year;
-  if (lhs.month != lhs.month) return lhs.month < rhs.month;
+  if (lhs.month != rhs.month) return lhs.month < rhs.month;
   if (lhs.day != rhs.day) return lhs.day < rhs.day;
   return false;
 }
 bool operator== (const date &lhs, const date &rhs) {
   if (lhs.year != rhs.year) return false;
-  if (lhs.month != lhs.month) return false;
+  if (lhs.month != rhs.month) return false;
   if (lhs.day != rhs.day) return false;
   return true;
 }
@@ -148,10 +149,9 @@ class air_mail : public mail {
 };
 class train_mail : public mail {
  protected:
-  static constexpr int MAXN = 128;
   int station_num = 0;
-  std::string station_name[MAXN];
-  date station_time[MAXN];
+  std::string *station_name = nullptr;
+  date *station_time = nullptr;
  public:
   train_mail () {}
   train_mail (
@@ -163,19 +163,29 @@ class train_mail : public mail {
     date *station_time_,
     int station_num
   ) : mail(contain, postmark, send_date, arrive_date), station_num(station_num) {
+    station_name = new std::string[station_num];
+    station_time = new date[station_num];
     for (int i = 0; i < station_num; ++i) {
       station_time[i] = station_time_[i];
       station_name[i] = station_name_[i];
     }
   }
-  ~train_mail () {}
+  ~train_mail () {
+    delete[] station_name;
+    delete[] station_time;
+  }
   void copy (object *o) {
     train_mail &m = *dynamic_cast<train_mail *>(o);
+    if (dynamic_cast<train_mail *>(o) == this) return;
     contain = m.contain;
     postmark = m.postmark;
     send_date = m.send_date;
     arrive_date = m.arrive_date;
+    delete[] station_time;
+    delete[] station_name;
     station_num = m.station_num;
+    station_name = new std::string[station_num];
+    station_time = new date[station_num];
     for (int i = 0; i < station_num; ++i) {
       station_time[i] = m.station_time[i];
       station_name[i] = m.station_name[i];
@@ -184,6 +194,13 @@ class train_mail : public mail {
   std::string send_status (int y, int m, int d) {
     date query_date (y, m, d);
     if (query_date < send_date) return "mail not send";
+    if (!(query_date < arrive_date)) return "already arrive";
+    date *x = std::lower_bound(station_time, station_time + station_num, query_date);
+    int offset = x - station_time;
+    if (query_date == station_time[offset]) return "at " + station_name[offset];
+    if (offset == 0) return "wait in departure station";
+    if (offset == station_num) return "wait in terminus station";
+    return "between " + station_name[offset - 1] + " and " + station_name[offset];
     if (query_date < station_time[0]) return "wait in departure station";
     for (int i = 0; i < station_num; ++i) if (query_date == station_time[i]) return std::string("at ") + station_name[i];
     for (int i = 0; i < station_num - 1; ++i) if (
@@ -193,6 +210,17 @@ class train_mail : public mail {
     if (station_time[station_num - 1] < query_date && query_date < arrive_date) return "wait in terminus station";
     return "already arrive";
   }
+  // std::string send_status (int y, int m, int d) {
+  //   date query_date {y, m, d};
+  //   if (query_date < send_date) return "mail not arrived";
+  //   if (!(query_date < arrive_date)) return "already arrive";
+  //   date *item = std::lower_bound(station_time, station_time + station_num, query_date);
+  //   int station_num_arriving = item - station_time;
+  //   if (query_date == station_time[station_num_arriving]) return "at " + station_name[station_num_arriving];
+  //   if (station_num_arriving == 0) return "wait in departure station";
+  //   if (station_num_arriving == station_num) return "wait in terminus station";
+  //   return "between " + station_name[station_num_arriving - 1] + " and " + station_name[station_num_arriving];
+  // }
   std::string type () {
     return "train";
   }
