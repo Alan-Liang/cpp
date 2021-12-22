@@ -53,6 +53,10 @@ class Model {
   int id = -1;
   void save () {
     if (id > -1) throw "bad id";
+    fstream fs { M::manager_.filename, std::ios::binary };
+    fs.seekg(id * sizeof(M));
+    fs.write(reinterpret_cast<char *>(this), sizeof(M));
+    fs.close();
     id = nextCollegeId++;
     collegeStore[id] = new M(*static_cast<M *>(this));
   }
