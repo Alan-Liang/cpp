@@ -1,0 +1,13 @@
+1 2
+< T1 T2 T3 > A
+4
+< > B < T1 T2 >
+< U1 U2 > C < U1 U2 >
+< U > D < T1 U >
+< U > E < U U >
+
+A < a b c >
+E < z z >
+
+A < a b c >
+E < a b >

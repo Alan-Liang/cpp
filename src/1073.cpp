@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <math.h>
 
 using std::cin, std::cout, std::endl;
 
@@ -66,10 +67,13 @@ class Calendar {
     return { y + 1, m + 1, d + 1 };
   }
   static int epochFromYmd_ (int y, int m, int d) {
-    return kYearOffset[y - 1] + (isLeap_(y) ? kMonthOffsetLeap : kMonthOffset)[m - 1] + d - 1;
+    int epochTime = kYearOffset[y - 1] + (isLeap_(y) ? kMonthOffsetLeap : kMonthOffset)[m - 1] + d - 1;
+    auto [ y1, m1, d1 ] = ymdFromEpoch_(epochTime);
+    if (y != y1 || m != m1 || d != d1) return epochFromYmd_(1900, 1, 1);
+    return epochTime;
   }
 
-  int epochTime_ = 0;
+  int epochTime_;
   Calendar (int epochTime) : epochTime_(epochTime) {}
   void readString_ (const std::string str) {
     epochTime_ = epochFromYmd_(
@@ -79,7 +83,7 @@ class Calendar {
     );
   }
  public:
-  Calendar () {}
+  Calendar () : epochTime_(epochFromYmd_(1900, 1, 1)) {}
   Calendar (int y, int m, int d) : epochTime_(epochFromYmd_(y, m, d)) {}
   Calendar (const std::string &str) { readString_(str); }
   bool operator== (const Calendar &that) const { return epochTime_ == that.epochTime_; }
@@ -96,11 +100,11 @@ class Calendar {
   Calendar &operator-= (int delta) { epochTime_ -= delta; return *this; }
   Calendar operator+ (int delta) const { return Calendar(epochTime_ + delta); }
   Calendar operator- (int delta) const { return Calendar(epochTime_ - delta); }
-  int operator- (const Calendar &that) const { return epochTime_ - that.epochTime_; }
+  int operator- (const Calendar &that) const { return abs(epochTime_ - that.epochTime_); }
   operator std::string () const {
     auto [ y, m, d ] = ymdFromEpoch_(epochTime_);
     char res[11];
-    std::sprintf(res, "%04d-%02d-%02d", y, m, d);
+    std::sprintf(res, "%d-%d-%d", y, m, d);
     return res;
   }
   friend std::istream &operator>> (std::istream &is, Calendar &cal) {
@@ -113,78 +117,64 @@ class Calendar {
   int getday () const { return (epochTime_ % 7 + 1) % 7; }
 };
 
-const Calendar operator ""_C (const char *col, size_t n) { return Calendar(col); }
+using Date = Calendar;
 
-using std::string;
+#ifndef ONLINE_JUDGE1
 
-void (*tests[]) () = {
-  [] {
-    Calendar c;
-  },
-  [] {
-    Calendar c(1,1,1);
-    cin >> c;
-    cout << (c+=0)+0 << endl;
-    cout << c.getday() << endl;
-    cin >> c;
-    cout << c << endl;
-    cout << c.getday() << endl;
-  },
-  [] {
-    Calendar c;
-    c = Calendar("2010-01-01");
-    cout << c.getday() << endl;
-    cout << c << endl;
-    cout << c.getday() << endl;
-    cout << ++c << endl;
-    cout << c.getday() << endl;
-    cout << (c += 1) << endl;
-    cout << c.getday() << endl;
-    cout << (c -= 1) << endl;
-    cout << c.getday() << endl;
-    cout << --c << endl;
-    cout << (c+=1)-(c-=1) << endl;
-    cout << c-c << endl;
-    cout << (c-=1) - (c+=1) << endl;
-  },
-  [] {
-    Calendar cend = Calendar("1005-12-31");
-    Calendar c(1000,1,1);
-    Calendar startc;
-    startc = c;
-    for (; c < cend; c+=2) {
-        cout << string(c++) << endl;
-        cout << (++c).getday() << endl;
+void Test()
+{
+    int op;
+    cin >> op;
+    int yy, mm, dd;
+    if (op == 1 || op == 0)
+    {
+        Date d0;
+        Date d1(2000, 2, 29);
+        Date d2(1900, 2, 29);
+        cout << d0 << endl;
+        cout << d1 << endl;
+        cout << d2 << endl;
+        //d0.out(); d1.out(); d2.out();
     }
-    for (; c >= startc; c-=10) {
-        cout << string(c--) << endl;
-        cout << (--c).getday() << endl;
+    if (op == 2 || op == 0)
+    {
+        cin >> yy >> mm >> dd;
+        Date d0(yy, mm, dd);
+        for (int i=0;i<5;++i) cout << ++d0 << endl; //(++d0).out();
+        for (int i=0;i<5;++i) cout << d0++ << endl; //(d0++).out();
+        for (int i=0;i<5;++i) cout << d0-- << endl; //(d0--).out();
+        for (int i=0;i<2;++i) cout << --d0 << endl; //(--d0).out();
+        cout << d0 << endl;
+        //d0.out();
     }
-    c = Calendar("0001-01-01")+1400;
-    Calendar cc = c - 1400;
-    cout << c << cc << endl;
-    for (; cc < c + 1400; ++cc) {
-        cout << (cc > c) << (cc == c) << (cc < c) << (cc == c) << (cc != c);
-        cout << (cc-c);
+    if (op == 3 || op == 0)
+    {
+        cin >> yy >> mm >> dd;
+        Date d0(yy, mm, dd);
+        cout << d0 + 100 << endl;
+        // (d0+100).out();
+        cout << d0 - 1000 << endl;
+        // (d0-1000).out();
     }
-  },
-  [] {
-    Calendar c(400,2,29);
-    c+=((c+2650000)-c);
-    c-=((c+2650000)-c);
-    c++;
-    c-=(c-(c+1));
-    --c;
-    c+=(c-(c+1));
-    cout << c+(c-c) << endl;
-    cout << c.getday() << endl;
-    cout << "2009-01-01"_C - 365;
-  },
-};
-
-int main () {
-  std::ios_base::sync_with_stdio(false);
-  cin.tie(NULL);
-  for (int i = 3; i < 5; ++i) tests[i]();
-  return 0;
+    if (op == 4 || op == 0)
+    {
+        cin >> yy >> mm >> dd;
+        Date d0(yy, mm, dd);
+        Date d1(2020, 12, 21);
+        cout << (d0 < d1) << endl;
+    }
+    if (op == 5 || op == 0)
+    {
+        cin >> yy >> mm >> dd;
+        Date d0(yy, mm, dd);
+        Date d1(1912, 6, 23);
+        cout << d0 - d1 << endl;
+    }
 }
+int main()
+{
+    Test();
+    return 0;
+}
+
+#endif
