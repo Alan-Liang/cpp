@@ -12,7 +12,7 @@ g++ --debug "$SRC" -o "$EXE" -DDEBUG -Wall -Wextra $CXXFLAGS || exit $?
 if [ "$2" = "-v" ]; then EXE="valgrind --leak-check=full --show-leak-kinds=all $EXE"; fi
 
 if [ "$2" = "-p" ]; then
-  if [ ! -e "$SRC" ]; then
+  if [ ! -e "$INFILE" ]; then
     echo "$INFILE needed to run profiling."
     exit 1
   fi

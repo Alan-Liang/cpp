@@ -12,7 +12,7 @@ cp skel/skel.cpp "$SRC"
 
 if [ -n "$2" ]; then
   touch "$INFILE"
-  codium "$INFILE"
+  $IDE "$INFILE"
 fi
 
-codium "$SRC"
+$IDE "$SRC"
