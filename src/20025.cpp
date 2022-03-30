@@ -16,9 +16,55 @@ struct Greater;
 template <typename T>
 struct Less;
 
-auto main () -> int {
+#define int long long
+
+#ifdef DEBUG
+const int kMaxn = 10;
+#else
+const int kMaxn = 2e3 + 10;
+#endif
+int prefix[kMaxn][kMaxn];
+int height, width;
+
+// $\sum_{i=1}^{dw}\sum_{j=1}^{dh}\sum_{k=1}^{w-i+1}k(h-j+1)$
+auto r1 (int x, int dx) -> int {
+  return 3 * x * x - 3 * x * (dx - 2) + dx * dx - 3 * dx + 2;
+}
+auto r2 (int w, int h, int dw, int dh) {
+  return dh * dw * (2 * h - dh + 1) * r1(w, dw) / 12;
+}
+
+auto main () -> signed {
+  height = nextInt();
+  width = nextInt();
+  for (int i = 0; i < height; ++i) {
+    int streak = 0;
+    for (int j = 0; j < width; ++j) {
+      char c = getchar();
+      while (c != '.' && c != '#') c = getchar();
+      if (c == '.') prefix[j][i + 1] = ++streak;
+      else streak = 0;
+    }
+  }
+  int sum = 0;
+  for (int i = 0; i < width; ++i) {
+    for (int j = 1; j < height + 2; ++j) {
+      int top = j - 1;
+      while (top > 0 && prefix[i][top] > prefix[i][j]) --top;
+      while (top != j - 1) {
+        ++top;
+        int w = j - top;
+        int h = prefix[i][top];
+        int dh = h - prefix[i][j];
+        sum += r2(w, h, 1, dh);
+        prefix[i][top] = prefix[i][j];
+      }
+    }
+  }
+  println(sum);
   return 0;
 }
+#undef int
 
 
 

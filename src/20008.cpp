@@ -16,7 +16,33 @@ struct Greater;
 template <typename T>
 struct Less;
 
+#ifdef DEBUG
+const int kMaxn = 8;
+#else
+const int kMaxn = 1e6 + 10;
+#endif
+int left[kMaxn], right[kMaxn];
+int queue[kMaxn];
+int head, tail;
+int length;
+
+
 auto main () -> int {
+  length = nextInt();
+  int max = 0;
+  int streakStartsAt = 0;
+  for (int i = 0; i < length; ++i) left[i] = nextInt(), right[i] = nextInt();
+  for (int i = 0; i < length; ++i) {
+    while (head < tail && left[i] > left[queue[tail - 1]]) --tail;
+    queue[tail++] = i;
+    int currentUpperBound = right[i];
+    while (head < tail - 1 && currentUpperBound < left[queue[head]]) {
+      streakStartsAt = queue[head] + 1;
+      ++head;
+    }
+    max = std::max(max, i - streakStartsAt + 1);
+  }
+  println(max);
   return 0;
 }
 

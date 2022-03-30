@@ -11,12 +11,36 @@ template <typename T>
 auto println (const T &) -> void;
 template <typename T>
 auto printsp (const T &) -> void;
-template <typename T>
-struct Greater;
-template <typename T>
-struct Less;
+
+const int kMaxn = 1e6 + 10;
+const int kMaxm = 2e3 + 10;
+int count[kMaxm];
+int a[kMaxn];
 
 auto main () -> int {
+  int n = nextInt(), m = nextInt();
+  int l = 0, r = -1;
+  readN(a, n);
+  int min = kMaxn + 1, minAt = 0;
+  while (r < n) {
+    for (int i = 0; i < m; ++i) {
+      while (count[i] == 0) {
+        ++r;
+        if (r >= n) goto final;
+        ++count[a[r] - 1];
+      }
+    }
+    while (true) {
+      if (min > r - l + 1) {
+        min = r - l + 1;
+        minAt = l;
+      }
+      if (--count[a[l++] - 1] == 0) break;
+    }
+  }
+  final:
+  printsp(minAt + 1);
+  printsp(min + minAt);
   return 0;
 }
 
@@ -71,16 +95,3 @@ auto printsp (const T &val) -> void {
   print(val);
   putchar(' ');
 }
-template <typename T>
-struct Greater {
-  auto operator() (const T &lhs, const T &rhs) const -> bool {
-    return lhs > rhs;
-  }
-};
-
-template <typename T>
-struct Less {
-  auto operator() (const T &lhs, const T &rhs) const -> bool {
-    return lhs < rhs;
-  }
-};

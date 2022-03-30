@@ -11,12 +11,42 @@ template <typename T>
 auto println (const T &) -> void;
 template <typename T>
 auto printsp (const T &) -> void;
-template <typename T>
-struct Greater;
-template <typename T>
-struct Less;
+
+int length;
+const int kMaxn = 5000 + 10;
+int prefix[kMaxn], infix[kMaxn];
+
+struct Node {
+  Node *left;
+  Node *right;
+  int value;
+};
+
+auto scan (int l1, int l2, int span) -> Node * {
+  if (span == 0) return nullptr;
+  int rootValue = prefix[l1];
+  Node *root = new Node { nullptr, nullptr, rootValue };
+  for (int i = 0; i < span; ++i) {
+    if (infix[l2 + i] == rootValue) {
+      root->left = scan(l1 + 1, l2, i);
+      root->right = scan(l1 + 1 + i, l2 + i + 1, span - i - 1);
+    }
+  }
+  return root;
+}
+
+auto printRoot (Node *root) -> void {
+  if (root->left != nullptr) printRoot(root->left);
+  if (root->right != nullptr) printRoot(root->right);
+  printsp(root->value);
+}
 
 auto main () -> int {
+  length = nextInt();
+  readN(prefix, length);
+  readN(infix, length);
+  prefix[length] = infix[length] = kMaxn;
+  printRoot(scan(0, 0, length));
   return 0;
 }
 
@@ -71,16 +101,3 @@ auto printsp (const T &val) -> void {
   print(val);
   putchar(' ');
 }
-template <typename T>
-struct Greater {
-  auto operator() (const T &lhs, const T &rhs) const -> bool {
-    return lhs > rhs;
-  }
-};
-
-template <typename T>
-struct Less {
-  auto operator() (const T &lhs, const T &rhs) const -> bool {
-    return lhs < rhs;
-  }
-};

@@ -16,7 +16,45 @@ struct Greater;
 template <typename T>
 struct Less;
 
+#ifdef DEBUG
+const int kMaxn = 1e2 + 10;
+#else
+const int kMaxn = 1e6 + 10;
+#endif
+
+int array[kMaxn], stack[kMaxn];
+int greaterLeft[kMaxn];
+
 auto main () -> int {
+  int length = nextInt();
+  readN(array, length);
+  int top = 0;
+  stack[0] = -1;
+  for (int i = 0; i < length; ++i) {
+    while (top > 0 && array[stack[top]] < array[i]) --top;
+    greaterLeft[i] = stack[top];
+    stack[++top] = i;
+  }
+  top = 0;
+  int max = 0;
+  for (int i = 0; i < length; ++i) {
+    while (top > 0 && array[stack[top]] >= array[i]) --top;
+    int want = greaterLeft[i] + 1;
+    int left = 1;
+    int right = top;
+    if (want == i || right == 0) goto next;
+    while (left < right) {
+      int mid = (left + right) / 2;
+      if (stack[mid] >= want) right = mid;
+      else left = mid + 1;
+    }
+    max = std::max(max, i - stack[left] + 1);
+    // printsp(stack[left]);
+    // println(i);
+    next:
+    stack[++top] = i;
+  }
+  println(max);
   return 0;
 }
 
